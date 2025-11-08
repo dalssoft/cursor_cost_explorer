@@ -1,0 +1,5 @@
+Date,Kind,Model,Cost,Total Tokens,Cache Read,Input,Output
+2025-10-10,Included,grok-code-fast-1,0.05,1000,800,100,100
+2025-10-11,On-Demand,claude-4.5-sonnet,0.25,5000,3000,1500,500
+2025-10-12,Errored,claude-thinking,0.56,8000,0,5000,3000
+
