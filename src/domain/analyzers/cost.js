@@ -5,6 +5,7 @@
 
 import { UsageRecord } from '../entities/UsageRecord.js';
 import { ModelUsage } from '../entities/ModelUsage.js';
+import { DailyUsage } from '../entities/DailyUsage.js';
 
 class CostAnalyzer {
     analyze(records) {
@@ -139,24 +140,25 @@ class CostAnalyzer {
     }
 
     calculateDailyCosts(records) {
-        const dailyCosts = {};
-
-        // Use entity method for date extraction
+        // Group records by date
+        const dailyGroups = {};
         for (const record of records) {
             const date = record.getDateOnly();
-            if (!dailyCosts[date]) {
-                dailyCosts[date] = {
-                    date,
-                    cost: 0,
-                    request_count: 0
-                };
+            if (!dailyGroups[date]) {
+                dailyGroups[date] = [];
             }
-            dailyCosts[date].cost += record.cost;
-            dailyCosts[date].request_count += 1;
+            dailyGroups[date].push(record);
         }
 
-        // Convert to array and sort by date
-        return Object.values(dailyCosts).sort((a, b) => a.date.localeCompare(b.date));
+        // Create DailyUsage entities
+        const dailyUsages = Object.entries(dailyGroups).map(([date, dateRecords]) =>
+            new DailyUsage(date, dateRecords)
+        );
+
+        // Sort by date and convert to plain objects
+        return dailyUsages
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .map(du => du.toObject());
     }
 
     findTopExpensiveRequests(records, limit = 5) {
@@ -181,10 +183,22 @@ class CostAnalyzer {
     }
 
     findTopExpensiveDays(dailyCosts, limit = 5) {
-        // Sort by cost descending
-        const sorted = [...dailyCosts].sort((a, b) => b.cost - a.cost);
+        // Convert plain objects back to DailyUsage entities for comparison
+        const dailyUsages = dailyCosts.map(d => {
+            // Reconstruct records from daily cost data (simplified - we don't have original records)
+            // For this method, we just need cost comparison, so we can use a minimal DailyUsage
+            const dailyUsage = Object.create(DailyUsage.prototype);
+            dailyUsage.date = d.date;
+            dailyUsage.cost = d.cost;
+            dailyUsage.request_count = d.request_count || 0;
+            dailyUsage.records = []; // Empty array since we don't have original records
+            return dailyUsage;
+        });
 
-        // Take top N
+        // Sort by cost descending
+        const sorted = dailyUsages.sort((a, b) => b.cost - a.cost);
+
+        // Take top N and convert to plain objects
         return sorted.slice(0, limit).map(day => ({
             date: day.date,
             cost: day.cost,

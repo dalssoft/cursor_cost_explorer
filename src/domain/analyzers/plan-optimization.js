@@ -3,6 +3,8 @@
  * Pure JavaScript - no external dependencies
  */
 
+import { PlanRecommendation } from '../entities/PlanRecommendation.js';
+
 /**
  * Cursor plan tiers and limits
  */
@@ -64,7 +66,7 @@ class PlanOptimizer {
             current_plan: currentPlan,
             actual_monthly_cost: actualMonthlyCost,
             request_analysis: requestAnalysis,
-            recommendation: recommendation
+            recommendation: recommendation.toObject() // Convert entity to plain object
         };
     }
 
@@ -234,16 +236,19 @@ class PlanOptimizer {
         // Calculate conservative savings (under-promise)
         const conservativeSavings = savings > 0 ? savings * 0.9 : 0; // 10% buffer
 
-        return {
+        return new PlanRecommendation({
+            current_plan: currentPlan.plan,
             recommended_plan: recommendedPlan,
             recommended_cost: PLAN_TIERS[recommendedPlan.toUpperCase()].monthlyCost,
+            actual_monthly_cost: monthlyCost,
             savings_monthly: Math.max(0, conservativeSavings),
             savings_yearly: Math.max(0, conservativeSavings * 12),
             confidence: confidence,
             reasoning: reasoning,
             actions: actions,
-            data_period_days: days
-        };
+            monthly_requests: requestAnalysis.monthly_requests,
+            exceeds_pro_limit: requestAnalysis.exceeds_pro_limit
+        });
     }
 }
 

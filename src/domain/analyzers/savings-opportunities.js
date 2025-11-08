@@ -7,6 +7,7 @@ import { PlanOptimizer } from './plan-optimization.js';
 import { ModelEfficiencyAnalyzer } from './model-efficiency.js';
 import { CacheEfficiencyAnalyzer } from './cache-efficiency.js';
 import { CostAnalyzer } from './cost.js';
+import { SavingsOpportunity } from '../entities/SavingsOpportunity.js';
 
 /**
  * Opportunity types
@@ -85,8 +86,8 @@ class SavingsOpportunitiesAnalyzer {
             opportunities.push(cacheOpportunity);
         }
 
-        // Rank by ROI (savings amount)
-        opportunities.sort((a, b) => b.savings_monthly - a.savings_monthly);
+        // Rank by priority score (combines ROI, impact, and savings)
+        opportunities.sort((a, b) => b.getPriorityScore() - a.getPriorityScore());
 
         // Take top 5
         const topOpportunities = opportunities.slice(0, 5);
@@ -94,8 +95,9 @@ class SavingsOpportunitiesAnalyzer {
         // Calculate total potential savings
         const totalPotentialSavings = topOpportunities.reduce((sum, opp) => sum + opp.savings_monthly, 0);
 
+        // Convert entities to plain objects for serialization
         return {
-            opportunities: topOpportunities,
+            opportunities: topOpportunities.map(opp => opp.toObject()),
             total_potential_savings_monthly: totalPotentialSavings,
             total_potential_savings_yearly: totalPotentialSavings * 12,
             total_opportunities_found: opportunities.length
@@ -111,30 +113,40 @@ class SavingsOpportunitiesAnalyzer {
     identifyPlanOptimizationOpportunity(planAnalysis, costSummary) {
         const recommendation = planAnalysis.recommendation;
 
+        // Recommendation is already a plain object from PlanOptimizer
+        const savingsMonthly = recommendation.savings_monthly;
+        const recommendedPlan = recommendation.recommended_plan;
+        const currentPlan = planAnalysis.current_plan.plan;
+        const confidence = recommendation.confidence || 'low';
+        const actions = recommendation.actions || [];
+        const reasoning = recommendation.reasoning || [];
+
         // Only create opportunity if there's a savings opportunity
-        if (recommendation.savings_monthly <= 0) {
+        if (savingsMonthly <= 0) {
             return null;
         }
-
-        const currentPlan = planAnalysis.current_plan.plan;
-        const recommendedPlan = recommendation.recommended_plan;
 
         // Don't create opportunity if already on recommended plan
         if (currentPlan === recommendedPlan) {
             return null;
         }
 
-        return {
+        const actionsArray = Array.isArray(actions) ? actions : [actions];
+        const reasoningText = Array.isArray(reasoning)
+            ? reasoning.join(' ')
+            : reasoning;
+
+        return new SavingsOpportunity({
             type: OPPORTUNITY_TYPES.PLAN_OPTIMIZATION,
             title: `Upgrade to ${recommendedPlan} Plan`,
-            savings_monthly: recommendation.savings_monthly,
-            savings_yearly: recommendation.savings_yearly,
+            savings_monthly: savingsMonthly,
+            savings_yearly: recommendation.savings_yearly || savingsMonthly * 12,
             difficulty: DIFFICULTY.EASY,
-            impact: recommendation.savings_monthly > 50 ? IMPACT.HIGH : IMPACT.MEDIUM,
-            action: recommendation.actions[0] || `Switch to ${recommendedPlan} plan`,
-            reasoning: recommendation.reasoning.join(' '),
-            confidence: recommendation.confidence
-        };
+            impact: savingsMonthly > 50 ? IMPACT.HIGH : IMPACT.MEDIUM,
+            action: actionsArray[0] || `Switch to ${recommendedPlan} plan`,
+            reasoning: reasoningText,
+            confidence: confidence
+        });
     }
 
     /**
@@ -192,7 +204,7 @@ class SavingsOpportunitiesAnalyzer {
                 continue;
             }
 
-            opportunities.push({
+            opportunities.push(new SavingsOpportunity({
                 type: OPPORTUNITY_TYPES.MODEL_MIGRATION,
                 title: `Migrate ${Math.round(migrationPercentage * 100)}% of ${expensiveModel.model} → ${bestAlternative.model}`,
                 savings_monthly: monthlySavingsScaled,
@@ -203,9 +215,8 @@ class SavingsOpportunitiesAnalyzer {
                 reasoning: `${expensiveModel.model} costs $${expensiveModel.cost_per_million_tokens.toFixed(0)}/M tokens vs ${bestAlternative.model} at $${bestAlternative.cost_per_million_tokens.toFixed(0)}/M tokens`,
                 migration_percentage: migrationPercentage,
                 from_model: expensiveModel.model,
-                to_model: bestAlternative.model,
-                migratable_requests: migratableRequests
-            });
+                to_model: bestAlternative.model
+            }));
         }
 
         return opportunities;
@@ -240,7 +251,7 @@ class SavingsOpportunitiesAnalyzer {
         const targetErrorCost = monthlyErroredCost * (targetErrorRate / errorRate);
         const potentialSavings = currentErrorCost - targetErrorCost;
 
-        return {
+        return new SavingsOpportunity({
             type: OPPORTUNITY_TYPES.ERROR_REDUCTION,
             title: `Reduce error rate from ${errorRate.toFixed(1)}% to ${targetErrorRate}%`,
             savings_monthly: Math.max(0, potentialSavings),
@@ -250,10 +261,8 @@ class SavingsOpportunitiesAnalyzer {
             action: 'Review failed requests to identify patterns, break large prompts into smaller chunks',
             reasoning: `You're spending $${monthlyErroredCost.toFixed(2)}/month on errored requests (${errorRate.toFixed(1)}% error rate)`,
             current_error_rate: errorRate,
-            target_error_rate: targetErrorRate,
-            errored_requests: erroredRequests,
-            total_requests: totalRequests
-        };
+            target_error_rate: targetErrorRate
+        });
     }
 
     /**
@@ -285,19 +294,19 @@ class SavingsOpportunitiesAnalyzer {
             estimatedSavings = monthlyCost * (improvementPotential / 100) * 0.5; // Conservative estimate
         }
 
-        return {
+        return new SavingsOpportunity({
             type: OPPORTUNITY_TYPES.CACHE_OPTIMIZATION,
             title: `Improve cache rate from ${cacheHitRate.toFixed(1)}% to 75%+`,
             savings_monthly: Math.max(0, estimatedSavings),
             savings_yearly: Math.max(0, estimatedSavings * 12),
             difficulty: DIFFICULTY.MEDIUM,
             impact: cacheHitRate < 60 ? IMPACT.MEDIUM : IMPACT.LOW,
-            action: feedback.tips.join('; '),
+            action: Array.isArray(feedback.tips) ? feedback.tips.join('; ') : feedback.tips,
             reasoning: `Your cache rate (${cacheHitRate.toFixed(1)}%) is below the recommended 75% threshold`,
             current_cache_rate: cacheHitRate,
             target_cache_rate: 75,
             tips: feedback.tips
-        };
+        });
     }
 }
 

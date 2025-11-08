@@ -3,6 +3,8 @@
  * Pure JavaScript - no external dependencies
  */
 
+import { WorkStyle } from '../entities/WorkStyle.js';
+
 /**
  * Work style characteristics
  */
@@ -48,7 +50,7 @@ class UsagePatternAnalyzer {
             daily_distribution: dailyDistribution,
             peak_hours: peakHours,
             sprints: sprints,
-            work_style: workStyle,
+            work_style: workStyle.toObject(), // Convert entity to plain object
             recommendations: recommendations
         };
     }
@@ -261,14 +263,14 @@ class UsagePatternAnalyzer {
             characteristics.push('Regular usage pattern');
         }
 
-        return {
+        return new WorkStyle({
             primary_style: styles[0],
             styles: styles,
             characteristics: characteristics,
             evening_percentage: eveningPercentage,
             weekend_percentage: weekendPercentage,
             usage_consistency: coefficientOfVariation < 0.3 ? 'steady' : coefficientOfVariation < 0.5 ? 'moderate' : 'bursty'
-        };
+        });
     }
 
     /**
@@ -318,8 +320,14 @@ class UsagePatternAnalyzer {
     generatePatternRecommendations(workStyle, peakHours, sprints, dailyDistribution, costSummary) {
         const recommendations = [];
 
+        // WorkStyle is now an entity, but we receive it as plain object from analyze()
+        // So we need to handle both cases
+        const styles = workStyle.styles || [];
+        const primaryStyle = workStyle.primary_style;
+        const weekendPercentage = workStyle.weekend_percentage || 0;
+
         // Night coder recommendations
-        if (workStyle.styles.includes(WORK_STYLES.NIGHT_CODER)) {
+        if (styles.includes(WORK_STYLES.NIGHT_CODER)) {
             recommendations.push({
                 type: 'work_pattern',
                 title: 'Night Coding Pattern Detected',
@@ -329,17 +337,17 @@ class UsagePatternAnalyzer {
         }
 
         // Weekend warrior recommendations
-        if (workStyle.styles.includes(WORK_STYLES.WEEKEND_WARRIOR)) {
+        if (styles.includes(WORK_STYLES.WEEKEND_WARRIOR)) {
             recommendations.push({
                 type: 'work_pattern',
                 title: 'Weekend Warrior Pattern',
-                message: `You use Cursor heavily on weekends (${workStyle.weekend_percentage.toFixed(1)}% of usage). Your steady usage justifies Pro/Ultra investment.`,
+                message: `You use Cursor heavily on weekends (${weekendPercentage.toFixed(1)}% of usage). Your steady usage justifies Pro/Ultra investment.`,
                 priority: 'low'
             });
         }
 
         // Sprint worker recommendations
-        if (workStyle.styles.includes(WORK_STYLES.SPRINT_WORKER)) {
+        if (styles.includes(WORK_STYLES.SPRINT_WORKER)) {
             recommendations.push({
                 type: 'optimization',
                 title: 'Sprint Worker Pattern',
@@ -350,7 +358,7 @@ class UsagePatternAnalyzer {
         }
 
         // Steady user recommendations
-        if (workStyle.styles.includes(WORK_STYLES.STEADY_USER) && workStyle.primary_style === WORK_STYLES.STEADY_USER) {
+        if (styles.includes(WORK_STYLES.STEADY_USER) && primaryStyle === WORK_STYLES.STEADY_USER) {
             recommendations.push({
                 type: 'optimization',
                 title: 'Steady Usage Pattern',
