@@ -3,6 +3,8 @@
  * Encapsulates model efficiency calculations and categorization
  */
 
+import { isThinkingModel as registryIsThinkingModel } from '../models/registry.js';
+
 class ModelUsage {
     constructor(model, records = []) {
         this.model = model;
@@ -74,10 +76,12 @@ class ModelUsage {
     }
 
     /**
-     * Checks if this is a thinking model (has "thinking" in name)
+     * Checks if this is a thinking model
+     * Uses model registry first, falls back to name check
      */
     isThinkingModel() {
-        return this.model.toLowerCase().includes('thinking');
+        // Check registry first
+        return registryIsThinkingModel(this.model);
     }
 
     /**
