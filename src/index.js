@@ -17,3 +17,6 @@ export { SavingsOpportunity } from './domain/entities/SavingsOpportunity.js';
 export { PlanRecommendation } from './domain/entities/PlanRecommendation.js';
 export { WorkStyle } from './domain/entities/WorkStyle.js';
 
+// Re-export formatters
+export { TextFormatter } from './formatters/text-formatter.js';
+

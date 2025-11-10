@@ -66,12 +66,16 @@ class ModelUsage {
     getCategory() {
         const costPerM = this.getCostPerMillionTokens();
 
-        if (costPerM < 50) {
-            return 'cost_efficient'; // 🟢
-        } else if (costPerM < 500) {
-            return 'specialized'; // 🟡
+        if (costPerM < 0.10) {
+            return 'ultra_cheap';  // < $0.10/M tokens
+        } else if (costPerM < 0.50) {
+            return 'cheap';  // $0.10-0.50/M tokens
+        } else if (costPerM < 1.50) {
+            return 'moderate';  // $0.50-1.50/M tokens
+        } else if (costPerM < 5.00) {
+            return 'expensive';  // $1.50-5.00/M tokens
         } else {
-            return 'premium'; // 🔴
+            return 'premium';  // > $5.00/M tokens
         }
     }
 

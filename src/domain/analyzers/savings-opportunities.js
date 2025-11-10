@@ -233,36 +233,16 @@ class SavingsOpportunitiesAnalyzer {
         const erroredRequests = records.filter(r => r.isErrored()).length;
         const errorRate = (erroredRequests / totalRequests) * 100;
 
-        // Only create opportunity if error rate > 3%
-        if (errorRate <= 3) {
+        // Note: Errored requests are NOT charged in Cursor, so there's no direct cost saving
+        // However, reducing errors still improves productivity
+        // Only create opportunity if error rate > 5% (significant issue)
+        if (errorRate <= 5) {
             return null;
         }
 
-        const erroredCost = records
-            .filter(r => r.isErrored())
-            .reduce((sum, r) => sum + r.cost, 0);
-
-        const days = costAnalysis.summary.period.days || 30;
-        const monthlyErroredCost = (erroredCost / days) * 30;
-
-        // Estimate potential savings: reduce error rate to 2%
-        const targetErrorRate = 2;
-        const currentErrorCost = monthlyErroredCost;
-        const targetErrorCost = monthlyErroredCost * (targetErrorRate / errorRate);
-        const potentialSavings = currentErrorCost - targetErrorCost;
-
-        return new SavingsOpportunity({
-            type: OPPORTUNITY_TYPES.ERROR_REDUCTION,
-            title: `Reduce error rate from ${errorRate.toFixed(1)}% to ${targetErrorRate}%`,
-            savings_monthly: Math.max(0, potentialSavings),
-            savings_yearly: Math.max(0, potentialSavings * 12),
-            difficulty: DIFFICULTY.MEDIUM,
-            impact: errorRate > 10 ? IMPACT.MEDIUM : IMPACT.LOW,
-            action: 'Review failed requests to identify patterns, break large prompts into smaller chunks',
-            reasoning: `You're spending $${monthlyErroredCost.toFixed(2)}/month on errored requests (${errorRate.toFixed(1)}% error rate)`,
-            current_error_rate: errorRate,
-            target_error_rate: targetErrorRate
-        });
+        // Since errored requests aren't charged, we can't calculate monetary savings
+        // This is more of a productivity/quality improvement
+        return null;  // Removing this opportunity since errored requests have no cost
     }
 
     /**

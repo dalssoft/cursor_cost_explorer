@@ -110,14 +110,24 @@ class CostAnalyzer {
             errored: 0
         };
 
+        const typeCounts = {
+            included: 0,
+            on_demand: 0,
+            errored: 0
+        };
+
         // Use entity methods for type classification
         for (const record of records) {
             if (record.isIncluded()) {
                 typeCosts.included += record.cost;
+                typeCounts.included++;
             } else if (record.isOnDemand()) {
                 typeCosts.on_demand += record.cost;
+                typeCounts.on_demand++;
             } else if (record.isErrored()) {
-                typeCosts.errored += record.cost;
+                // Errored requests are NOT charged (cost = 0 for billing purposes)
+                typeCosts.errored += 0;
+                typeCounts.errored++;
             }
         }
 
@@ -126,15 +136,18 @@ class CostAnalyzer {
         return {
             included: {
                 cost: typeCosts.included,
+                request_count: typeCounts.included,
                 percentage: totalCost > 0 ? (typeCosts.included / totalCost) * 100 : 0
             },
             on_demand: {
                 cost: typeCosts.on_demand,
+                request_count: typeCounts.on_demand,
                 percentage: totalCost > 0 ? (typeCosts.on_demand / totalCost) * 100 : 0
             },
             errored: {
                 cost: typeCosts.errored,
-                percentage: totalCost > 0 ? (typeCosts.errored / totalCost) * 100 : 0
+                request_count: typeCounts.errored,
+                percentage: 0  // Errored requests don't count toward cost
             }
         };
     }
