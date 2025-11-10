@@ -4,6 +4,9 @@
   "description": "Privacy-first analyzer for Cursor IDE usage data. Transforms CSV exports into actionable cost insights and optimization recommendations.",
   "main": "src/index.js",
   "type": "module",
+  "bin": {
+    "cursor-cost-explorer": "./src/cli/index.js"
+  },
   "engines": {
     "node": ">=24.0.0"
   },
