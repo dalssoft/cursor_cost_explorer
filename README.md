@@ -17,7 +17,7 @@ Cursor IDE users spend $20-$370/month on AI coding assistance but lack visibilit
 
 - **Core Domain Logic** (`src/domain/`): Pure JavaScript domain logic with zero external dependencies
 - **CLI Interface** (`src/cli/`): Command-line tool for terminal usage
-- **Web UI** (`docs/`): Browser-based interface for interactive analysis
+- **Web UI** (`index.html` + `src/web/`): Browser-based interface for interactive analysis
 - **JSON API** (`src/index.js`): Programmatic access to analysis engine
 
 ## Project Structure
@@ -31,8 +31,9 @@ cursor_cost_explorer/
 │   │   ├── parsers/     # CSV parsing and validation
 │   │   └── models/      # Model registry and pricing
 │   ├── cli/             # CLI entry point and text formatter
+│   ├── web/             # Web UI JavaScript modules
 │   └── index.js         # Public API for programmatic use
-├── docs/                # Web UI (HTML/CSS/JS)
+├── index.html           # Web UI entry point
 ├── tests/               # Test suite
 ├── backlog/             # Project management and tasks
 └── package.json
@@ -85,12 +86,14 @@ cursor-cost-explorer usage.csv --json --output analysis.json
 
 ### Web UI
 
-For an interactive browser-based experience, open `docs/index.html` in your browser and upload your CSV file directly. The web UI provides:
+For an interactive browser-based experience, open `index.html` in your browser and upload your CSV file directly. The web UI provides:
 
 - Interactive visualizations
 - Real-time analysis
 - No command-line required
 - Works entirely in your browser (no server needed)
+
+Simply open `index.html` in any modern browser - no installation or server setup required.
 
 ## Setup (for development)
 
@@ -140,8 +143,9 @@ npm test
 ### Development Workflow
 
 1. Domain logic lives in `src/domain/` with zero external dependencies
-2. CLI and Web UI consume the core engine via `src/index.js`
+2. CLI (`src/cli/`) and Web UI (`index.html` + `src/web/`) consume the core engine via `src/index.js`
 3. All analysis modules are thoroughly tested in `tests/`
+4. Web UI files are at the root (`index.html`) and use modules from `src/web/`
 
 ## License
 
