@@ -7,8 +7,8 @@
 import { parseCSVContent } from './browser-csv-parser.js';
 
 // Import analysis engine and formatter directly (avoiding CSV parser's fs import)
-import { analyze } from '../src/domain/analyzer.js';
-import { TextFormatter } from '../src/formatters/text-formatter.js';
+import { analyze } from '../domain/analyzer.js';
+import { TextFormatter } from '../formatters/text-formatter.js';
 
 // GitHub API to fetch star count
 async function fetchGitHubStars() {
