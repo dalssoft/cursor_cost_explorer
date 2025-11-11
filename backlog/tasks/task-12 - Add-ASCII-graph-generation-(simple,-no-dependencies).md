@@ -1,11 +1,11 @@
 ---
 id: task-12
 title: 'Add ASCII graph generation (simple, no dependencies)'
-status: In Progress
+status: Done
 assignee:
   - '@agent'
 created_date: '2025-11-10 15:15'
-updated_date: '2025-11-11 00:28'
+updated_date: '2025-11-11 14:44'
 labels:
   - cli
   - formatter
@@ -45,3 +45,13 @@ Extend the text formatter to optionally generate simple ASCII graphs. Create bar
 7. Use ASCII characters: #, █, *, ·
 8. Make graphs optional and controlled by flag
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Enhanced graph implementation with Unicode characters:
+- Line charts use Unicode braille characters (U+2800-U+28FF) for 2x horizontal and 4x vertical resolution
+- Bar charts use ░ (light shade) for background and █ (full block) for filled bars, providing clear visual distinction
+- All graphs maintain readability and work within terminal width constraints
+- Implementation uses Bresenham's line algorithm for smooth line rendering
+<!-- SECTION:NOTES:END -->

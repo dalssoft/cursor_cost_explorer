@@ -1,11 +1,11 @@
 ---
 id: task-11
 title: 'Create CLI text formatter (base, no graphs)'
-status: In Progress
+status: Done
 assignee:
   - '@agent'
 created_date: '2025-11-10 15:14'
-updated_date: '2025-11-10 15:19'
+updated_date: '2025-11-11 14:45'
 labels:
   - cli
   - formatter
@@ -20,12 +20,12 @@ Create a text formatter that converts AnalysisResult to plain text output. Outpu
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Formatter accepts AnalysisResult and returns formatted string
-- [ ] #2 All analysis sections included in readable format
-- [ ] #3 Tables use ASCII borders (simple -, |, + characters)
-- [ ] #4 Output is deterministic and parseable
-- [ ] #5 No external dependencies (pure Node.js)
-- [ ] #6 Clear section headers and organized layout
+- [x] #1 Formatter accepts AnalysisResult and returns formatted string
+- [x] #2 All analysis sections included in readable format
+- [x] #3 Tables use ASCII borders (simple -, |, + characters)
+- [x] #4 Output is deterministic and parseable
+- [x] #5 No external dependencies (pure Node.js)
+- [x] #6 Clear section headers and organized layout
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -39,3 +39,16 @@ Create a text formatter that converts AnalysisResult to plain text output. Outpu
 6. Combine all sections into formatted output
 7. Add tests for the formatter
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TextFormatter class fully implemented with all required sections:
+- Accepts AnalysisResult and returns formatted string
+- All analysis sections included (summary, cost analysis, model efficiency, plan recommendation, cache efficiency, opportunities, patterns)
+- Tables use ASCII borders (-, |, +)
+- Output is deterministic and parseable
+- Pure Node.js implementation with no external dependencies
+- Clear section headers and organized layout
+- Comprehensive test coverage
+<!-- SECTION:NOTES:END -->

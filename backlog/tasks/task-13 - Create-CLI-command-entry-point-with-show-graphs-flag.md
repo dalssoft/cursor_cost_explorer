@@ -1,11 +1,11 @@
 ---
 id: task-13
 title: Create CLI command entry point with --show-graphs flag
-status: In Progress
+status: Done
 assignee:
   - '@agent'
 created_date: '2025-11-10 15:15'
-updated_date: '2025-11-10 18:35'
+updated_date: '2025-11-11 14:45'
 labels:
   - cli
   - entry-point
@@ -66,4 +66,10 @@ Features implemented:
 Note: --show-graphs flag is parsed but graphs are not yet implemented (task 12 pending). When task 12 completes, the flag will enable ASCII graph generation.
 
 All tests passing. CLI works both when run directly and via npx.
+
+Task completed. The --show-graphs flag now works correctly with the enhanced graph implementation from task-12:
+- Unicode braille characters for line charts
+- Improved bar charts with visual contrast
+- All CLI features tested and working
+- Works correctly with npx cursor-cost-explorer command
 <!-- SECTION:NOTES:END -->
