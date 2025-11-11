@@ -33,7 +33,48 @@ cursor_cost_explorer/
 
 - Node.js >= 24.0.0 (latest LTS)
 
-## Setup
+## Installation
+
+### Option 1: Install globally (recommended)
+
+```bash
+npm install -g cursor-cost-explorer
+```
+
+### Option 2: Use with npx (no installation required)
+
+```bash
+npx cursor-cost-explorer <csv-file> [options]
+```
+
+## Usage
+
+After installation, analyze your Cursor IDE usage data:
+
+```bash
+# Basic usage - analyze CSV file
+cursor-cost-explorer usage.csv
+
+# Enable ASCII graphs for visual insights
+cursor-cost-explorer usage.csv --show-graphs
+
+# Save output to a file
+cursor-cost-explorer usage.csv --output analysis.txt
+
+# Export raw JSON for programmatic use
+cursor-cost-explorer usage.csv --json --output analysis.json
+```
+
+### Command Line Options
+
+- `<csv-file>`: Path to CSV file exported from Cursor IDE (required)
+- `--show-graphs, -g`: Enable ASCII graph generation (bar charts, trends)
+- `--output <file>, -o`: Save output to file instead of stdout
+- `--json, -j`: Output raw JSON (for programmatic use)
+- `--help, -h`: Show help message
+- `--version, -v`: Show version number
+
+## Setup (for development)
 
 ```bash
 # Install latest Node.js LTS (if using nvm)

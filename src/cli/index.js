@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --no-warnings
 /**
  * CLI entry point for Cursor Cost Explorer
  * Usage: cursor-cost-explorer <csv-file> [--show-graphs] [--output <file>] [--json]
@@ -158,7 +158,7 @@ async function main() {
         } else {
             // Text output
             const formatter = new TextFormatter();
-            
+
             // Pass showGraphs flag to formatter
             output = formatter.format(analysisResult, args.showGraphs);
         }
@@ -198,14 +198,8 @@ async function main() {
     }
 }
 
-// Run CLI when executed directly (not when imported)
-// Check if this is being run directly vs imported
-const isMainModule = process.argv[1] &&
-    fileURLToPath(import.meta.url) === process.argv[1];
-
-if (isMainModule) {
-    main();
-}
+// Run CLI
+main();
 
 export { main, parseArgs };
 
