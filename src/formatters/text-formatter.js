@@ -8,9 +8,10 @@ class TextFormatter {
     /**
      * Formats an AnalysisResult object to plain text
      * @param {Object} analysisResult - Analysis result from analyzer
+     * @param {boolean} showGraphs - Whether to include ASCII graphs
      * @returns {string} Formatted text output
      */
-    format(analysisResult) {
+    format(analysisResult, showGraphs = false) {
         if (!analysisResult) {
             throw new Error('AnalysisResult cannot be null or undefined');
         }
@@ -23,8 +24,8 @@ class TextFormatter {
         // Add summary section
         sections.push(this.formatSummary(analysisResult.summary));
 
-        // Add cost analysis section
-        sections.push(this.formatCostAnalysis(analysisResult.cost_analysis));
+        // Add cost analysis section (with optional graphs)
+        sections.push(this.formatCostAnalysis(analysisResult.cost_analysis, showGraphs));
 
         // Add model efficiency section
         sections.push(this.formatModelEfficiency(analysisResult.model_efficiency));
@@ -39,7 +40,7 @@ class TextFormatter {
         sections.push(this.formatOpportunities(analysisResult.opportunities));
 
         // Add patterns section
-        sections.push(this.formatPatterns(analysisResult.patterns));
+        sections.push(this.formatPatterns(analysisResult.patterns, showGraphs));
 
         return sections.filter(s => s).join('\n\n');
     }
@@ -117,9 +118,10 @@ class TextFormatter {
     /**
      * Formats cost analysis section
      * @param {Object} costAnalysis - Cost analysis object
+     * @param {boolean} showGraphs - Whether to include graphs
      * @returns {string} Formatted cost analysis
      */
-    formatCostAnalysis(costAnalysis) {
+    formatCostAnalysis(costAnalysis, showGraphs = false) {
         if (!costAnalysis) return '';
 
         const lines = [
@@ -148,6 +150,20 @@ class TextFormatter {
 
             lines.push(...this.formatTable(modelTable));
             lines.push('');
+
+            // Add horizontal bar chart if graphs enabled
+            if (showGraphs) {
+                const topModels = costAnalysis.breakdown_by_model.slice(0, 8).map(item => ({
+                    label: (item.model || 'Unknown').substring(0, 20),
+                    value: item.total_cost || 0,
+                    percentage: item.percentage || 0
+                }));
+                if (topModels.length > 0) {
+                    lines.push('Cost Distribution (Top Models):');
+                    lines.push(...this.generateHorizontalBarChart(topModels, 50));
+                    lines.push('');
+                }
+            }
         }
 
         // Breakdown by type
@@ -185,6 +201,29 @@ class TextFormatter {
 
             lines.push(...this.formatTable(typeTable));
             lines.push('');
+
+            // Add horizontal bar chart if graphs enabled
+            if (showGraphs) {
+                const typeData = [];
+                types.forEach(type => {
+                    const data = costAnalysis.breakdown_by_type[type];
+                    if (data && data.cost > 0) {
+                        const totalCost = (costAnalysis.breakdown_by_type.included?.cost || 0) +
+                            (costAnalysis.breakdown_by_type.on_demand?.cost || 0);
+                        const percentage = totalCost > 0 ? (data.cost / totalCost) * 100 : 0;
+                        typeData.push({
+                            label: type.charAt(0).toUpperCase() + type.slice(1).replace('_', '-'),
+                            value: data.cost || 0,
+                            percentage: percentage
+                        });
+                    }
+                });
+                if (typeData.length > 0) {
+                    lines.push('Cost Distribution by Type:');
+                    lines.push(...this.generateHorizontalBarChart(typeData, 50));
+                    lines.push('');
+                }
+            }
         }
 
         // Most expensive model
@@ -212,6 +251,20 @@ class TextFormatter {
 
             lines.push(...this.formatTable(daysTable));
             lines.push('');
+
+            // Add line chart if graphs enabled
+            if (showGraphs && costAnalysis.daily_costs && costAnalysis.daily_costs.length > 0) {
+                // Use daily costs for the line chart (more data points)
+                const dailyData = costAnalysis.daily_costs.slice(0, 30).map(day => ({
+                    date: day.date || '',
+                    cost: day.cost || 0
+                }));
+                if (dailyData.length > 1) {
+                    lines.push('Daily Cost Trend:');
+                    lines.push(...this.generateLineChart(dailyData, 60, 6));
+                    lines.push('');
+                }
+            }
         }
 
         return lines.join('\n');
@@ -428,9 +481,10 @@ class TextFormatter {
     /**
      * Formats patterns section
      * @param {Object} patterns - Patterns object
+     * @param {boolean} showGraphs - Whether to include graphs
      * @returns {string} Formatted patterns
      */
-    formatPatterns(patterns) {
+    formatPatterns(patterns, showGraphs = false) {
         if (!patterns) return '';
 
         const lines = [
@@ -492,18 +546,30 @@ class TextFormatter {
                 .slice(0, 5);
 
             if (sorted.length > 0) {
-                const hourlyTable = [
-                    ['Hour', 'Request Count']
-                ];
+                if (showGraphs) {
+                    // Create horizontal bar chart for hours
+                    const hourBars = sorted.map(item => ({
+                        label: `${item.hour}:00`.padStart(5),
+                        value: item.count,
+                        percentage: (item.count / patterns.hourly_distribution.reduce((sum, c) => sum + (typeof c === 'object' ? c.requests || 0 : c || 0), 0)) * 100
+                    }));
 
-                sorted.forEach(item => {
-                    hourlyTable.push([
-                        `${item.hour}:00`,
-                        this.formatNumber(item.count)
-                    ]);
-                });
+                    lines.push(...this.generateHorizontalBarChart(hourBars, 50));
+                } else {
+                    // Show table when graphs disabled
+                    const hourlyTable = [
+                        ['Hour', 'Request Count']
+                    ];
 
-                lines.push(...this.formatTable(hourlyTable));
+                    sorted.forEach(item => {
+                        hourlyTable.push([
+                            `${item.hour}:00`,
+                            this.formatNumber(item.count)
+                        ]);
+                    });
+
+                    lines.push(...this.formatTable(hourlyTable));
+                }
             } else {
                 lines.push('  No hourly data available');
             }
@@ -512,35 +578,53 @@ class TextFormatter {
 
         // Daily distribution
         if (patterns.daily_distribution && patterns.daily_distribution.length > 0) {
-            lines.push('Daily Distribution:');
+            lines.push('Weekly Usage Pattern:');
             lines.push('');
 
             // Handle both array of numbers and array of objects
             const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const dailyTable = [
-                ['Day', 'Request Count']
-            ];
 
-            patterns.daily_distribution.forEach((item, index) => {
-                let dayName, count;
+            if (showGraphs) {
+                // Create vertical bar chart for days
+                const dayBars = patterns.daily_distribution.map((item, index) => {
+                    let count;
 
-                if (typeof item === 'object' && item.requests !== undefined) {
-                    // Object format: {day: 0-6, dayName: '...', requests: n, cost: n}
-                    dayName = dayNames[item.day] || item.dayName || `Day ${item.day}`;
-                    count = item.requests;
-                } else {
-                    // Number format: array of counts
-                    dayName = dayNames[index] || `Day ${index}`;
-                    count = item;
-                }
+                    if (typeof item === 'object' && item.requests !== undefined) {
+                        count = item.requests;
+                    } else {
+                        count = item;
+                    }
 
-                dailyTable.push([
-                    dayName,
-                    this.formatNumber(count)
-                ]);
-            });
+                    return {
+                        label: dayNames[index] || `Day ${index}`,
+                        value: count || 0
+                    };
+                });
 
-            lines.push(...this.formatTable(dailyTable));
+                lines.push(...this.generateBarChart(dayBars, 50, 8));
+            } else {
+                // Show table when graphs disabled
+                const dailyTable = [
+                    ['Day', 'Request Count']
+                ];
+
+                patterns.daily_distribution.forEach((item, index) => {
+                    let count;
+
+                    if (typeof item === 'object' && item.requests !== undefined) {
+                        count = item.requests;
+                    } else {
+                        count = item;
+                    }
+
+                    dailyTable.push([
+                        dayNames[index] || `Day ${index}`,
+                        this.formatNumber(count)
+                    ]);
+                });
+
+                lines.push(...this.formatTable(dailyTable));
+            }
             lines.push('');
         }
 
@@ -740,6 +824,297 @@ class TextFormatter {
         }
 
         return lines.join('\n');
+    }
+
+    /**
+     * Generates a horizontal bar chart showing percentages
+     * @param {Array<Object>} data - Array of {label, value, percentage}
+     * @param {number} width - Maximum width of the chart (default 70)
+     * @returns {Array<string>} Array of lines representing the chart
+     */
+    generateHorizontalBarChart(data, width = 70) {
+        if (!data || data.length === 0) return [];
+
+        const lines = [];
+        const maxValue = Math.max(...data.map(d => d.value || 0));
+
+        // Calculate max label length for dynamic padding
+        const maxLabelLength = Math.max(...data.map(d => String(d.label || '').length));
+        const labelWidth = Math.min(maxLabelLength, 15); // Cap at 15 chars
+
+        data.forEach(item => {
+            const label = String(item.label || '').substring(0, labelWidth).padEnd(labelWidth);
+            const percentage = item.percentage || 0;
+            const barLength = Math.round((percentage / 100) * width);
+            const bar = '█'.repeat(barLength);
+            const valueStr = this.formatCurrency(item.value || 0);
+            const pctStr = this.formatPercentage(percentage);
+
+            lines.push(`${label} │${bar}│ ${pctStr} (${valueStr})`);
+        });
+
+        return lines;
+    }
+
+    /**
+     * Generates a vertical bar chart
+     * @param {Array<Object>} data - Array of {label, value}
+     * @param {number} width - Maximum width of the chart (default 70)
+     * @param {number} height - Height of the chart (default 10)
+     * @returns {Array<string>} Array of lines representing the chart
+     */
+    generateBarChart(data, width = 70, height = 10) {
+        if (!data || data.length === 0) return [];
+
+        const lines = [];
+        const maxValue = Math.max(...data.map(d => d.value || 0));
+        if (maxValue === 0) return [];
+
+        // Calculate bar heights and positions
+        const barWidth = 8; // Fixed width per bar (4 chars for bar + 4 for spacing)
+        const bars = data.map((item, index) => ({
+            label: String(item.label || '').substring(0, 3).padEnd(3),
+            height: Math.round((item.value / maxValue) * height),
+            value: item.value || 0,
+            position: index * barWidth // Starting column for this bar
+        }));
+
+        const chartWidth = bars.length * barWidth;
+
+        // Draw chart from top to bottom
+        for (let row = height; row >= 0; row--) {
+            const lineChars = Array(chartWidth).fill(' ');
+            bars.forEach(bar => {
+                const startCol = bar.position;
+                // Draw the bar segment if it reaches this row
+                if (bar.height >= row) {
+                    for (let i = 0; i < 4; i++) {
+                        if (startCol + i < chartWidth) {
+                            lineChars[startCol + i] = '█';
+                        }
+                    }
+                }
+            });
+            lines.push(lineChars.join(''));
+        }
+
+        // Add labels and values
+        const labelChars = Array(chartWidth).fill(' ');
+        const valueChars = Array(chartWidth).fill(' ');
+        bars.forEach(bar => {
+            const startCol = bar.position;
+            // Place label (3 chars)
+            const label = bar.label;
+            for (let i = 0; i < Math.min(3, label.length); i++) {
+                if (startCol + i < chartWidth) {
+                    labelChars[startCol + i] = label[i];
+                }
+            }
+
+            // Place value (7 chars)
+            const valueStr = this.formatCurrency(bar.value).substring(0, 7);
+            for (let i = 0; i < Math.min(7, valueStr.length); i++) {
+                if (startCol + i < chartWidth) {
+                    valueChars[startCol + i] = valueStr[i];
+                }
+            }
+        });
+        lines.push(labelChars.join(''));
+        lines.push(valueChars.join(''));
+
+        return lines;
+    }
+
+    /**
+     * Generates a smooth line chart for daily cost trends using Unicode line drawing
+     * @param {Array<Object>} data - Array of {date, cost}
+     * @param {number} width - Maximum width of the chart (default 70)
+     * @param {number} height - Height of the chart (default 8)
+     * @returns {Array<string>} Array of lines representing the chart
+     */
+    generateLineChart(data, width = 70, height = 8) {
+        if (!data || data.length === 0) return [];
+
+        const lines = [];
+        const maxCost = Math.max(...data.map(d => d.cost || 0));
+        if (maxCost === 0) return [];
+
+        // Normalize data to chart dimensions
+        const chartData = data.map(item => ({
+            date: item.date || '',
+            cost: item.cost || 0,
+            y: Math.round((item.cost / maxCost) * height)
+        }));
+
+        // Create a grid with Unicode characters
+        const grid = Array(height + 1).fill(null).map(() => Array(width).fill(' '));
+
+        // Unicode line drawing characters - using simpler ASCII-friendly characters
+        const chars = {
+            horizontal: '-',
+            vertical: '|',
+            cross: '+',
+            cornerTL: '+',
+            cornerTR: '+',
+            cornerBL: '+',
+            cornerBR: '+',
+            tTop: '+',
+            tBottom: '+',
+            tLeft: '+',
+            tRight: '+',
+            point: '*',
+            line: '-'
+        };
+
+        // Plot points and draw smooth lines
+        chartData.forEach((point, index) => {
+            const x = Math.round((index / (chartData.length - 1)) * (width - 1));
+            const y = height - point.y;
+            if (y >= 0 && y <= height && x >= 0 && x < width) {
+                grid[y][x] = chars.point;
+            }
+        });
+
+        // Draw smooth lines between points
+        for (let i = 0; i < chartData.length - 1; i++) {
+            const x1 = Math.round((i / (chartData.length - 1)) * (width - 1));
+            const y1 = height - chartData[i].y;
+            const x2 = Math.round(((i + 1) / (chartData.length - 1)) * (width - 1));
+            const y2 = height - chartData[i + 1].y;
+
+            this.drawSmoothLine(grid, x1, y1, x2, y2, chars, width, height);
+        }
+
+        // Convert grid to lines
+        grid.forEach(row => {
+            lines.push('|' + row.join('') + '|');
+        });
+
+        // Add x-axis
+        lines.push('+' + '-'.repeat(width) + '+');
+
+        // Add date labels (show first and last with better formatting)
+        if (chartData.length > 0) {
+            const firstDate = chartData[0].date;
+            const lastDate = chartData[chartData.length - 1].date;
+
+            // Format dates as MM/DD
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '';
+                try {
+                    const date = new Date(dateStr);
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                } catch {
+                    return dateStr.substring(5);
+                }
+            };
+
+            const firstLabel = formatDate(firstDate);
+            const lastLabel = formatDate(lastDate);
+            const padding = Math.max(0, width - firstLabel.length - lastLabel.length);
+
+            lines.push(' ' + firstLabel + ' '.repeat(padding) + lastLabel);
+        }
+
+        return lines;
+    }
+
+    /**
+     * Draws a smooth line between two points using Unicode characters
+     * @param {Array<Array<string>>} grid - The grid to draw on
+     * @param {number} x1 - Start x coordinate
+     * @param {number} y1 - Start y coordinate
+     * @param {number} x2 - End x coordinate
+     * @param {number} y2 - End y coordinate
+     * @param {Object} chars - Unicode character set
+     * @param {number} width - Grid width
+     * @param {number} height - Grid height
+     */
+    drawSmoothLine(grid, x1, y1, x2, y2, chars, width, height) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const steps = Math.max(Math.abs(dx), Math.abs(dy));
+
+        for (let step = 0; step <= steps; step++) {
+            const t = step / steps;
+            const x = Math.round(x1 + dx * t);
+            const y = Math.round(y1 + dy * t);
+
+            if (y >= 0 && y <= height && x >= 0 && x < width) {
+                // Skip if this is a point location
+                if (grid[y][x] === chars.point) continue;
+
+                // Use simple characters based on line direction
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // More horizontal - use dash
+                    grid[y][x] = chars.horizontal;
+                } else if (Math.abs(dy) > Math.abs(dx)) {
+                    // More vertical - use pipe
+                    grid[y][x] = chars.vertical;
+                } else {
+                    // Diagonal - use dash for now
+                    grid[y][x] = chars.horizontal;
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets the appropriate line character based on context
+     * @param {Array<Array<string>>} grid - The grid
+     * @param {number} x - Current x position
+     * @param {number} y - Current y position
+     * @param {Object} chars - Unicode character set
+     * @returns {string} Appropriate line character
+     */
+    getLineChar(grid, x, y, chars) {
+        // Check neighboring cells to determine line direction
+        const up = y > 0 ? grid[y - 1][x] : ' ';
+        const down = y < grid.length - 1 ? grid[y + 1][x] : ' ';
+        const left = x > 0 ? grid[y][x - 1] : ' ';
+        const right = x < grid[0].length - 1 ? grid[y][x + 1] : ' ';
+
+        const hasUp = this.isLineChar(up, chars);
+        const hasDown = this.isLineChar(down, chars);
+        const hasLeft = this.isLineChar(left, chars);
+        const hasRight = this.isLineChar(right, chars);
+
+        // Determine line direction
+        if (hasLeft && hasRight && !hasUp && !hasDown) {
+            return chars.horizontal;  // ─
+        } else if (!hasLeft && !hasRight && hasUp && hasDown) {
+            return chars.vertical;    // │
+        } else if (hasLeft && hasRight && hasUp && hasDown) {
+            return chars.cross;       // ┼
+        } else if (hasLeft && hasRight && hasUp && !hasDown) {
+            return chars.tTop;        // ┬
+        } else if (hasLeft && hasRight && !hasUp && hasDown) {
+            return chars.tBottom;     // ┴
+        } else if (hasLeft && !hasRight && hasUp && hasDown) {
+            return chars.tRight;      // ┤
+        } else if (!hasLeft && hasRight && hasUp && hasDown) {
+            return chars.tLeft;       // ├
+        } else if (hasRight && hasDown && !hasLeft && !hasUp) {
+            return chars.cornerTL;    // ┌
+        } else if (hasLeft && hasDown && !hasRight && !hasUp) {
+            return chars.cornerTR;    // ┐
+        } else if (hasRight && hasUp && !hasLeft && !hasDown) {
+            return chars.cornerBL;    // └
+        } else if (hasLeft && hasUp && !hasRight && !hasDown) {
+            return chars.cornerBR;    // ┘
+        } else {
+            return chars.line;        // ━ (fallback)
+        }
+    }
+
+    /**
+     * Checks if a character is a line drawing character
+     * @param {string} char - Character to check
+     * @param {Object} chars - Unicode character set
+     * @returns {boolean} True if it's a line character
+     */
+    isLineChar(char, chars) {
+        return Object.values(chars).includes(char) && char !== ' ';
     }
 }
 

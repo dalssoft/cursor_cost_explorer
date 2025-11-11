@@ -74,13 +74,23 @@ test('Formatter uses ASCII borders in tables', () => {
     assert.ok(output.includes('-'), 'Should use - for table borders');
     assert.ok(output.includes('+'), 'Should use + for table corners');
 
-    // Should NOT use Unicode box-drawing characters
-    assert.ok(!output.includes('─'), 'Should not use Unicode dash');
-    assert.ok(!output.includes('│'), 'Should not use Unicode pipe');
-    assert.ok(!output.includes('┌'), 'Should not use Unicode box-drawing');
-    assert.ok(!output.includes('┐'), 'Should not use Unicode box-drawing');
-    assert.ok(!output.includes('└'), 'Should not use Unicode box-drawing');
-    assert.ok(!output.includes('┘'), 'Should not use Unicode box-drawing');
+    // Tables should still use ASCII, but graphs can use Unicode line-drawing chars
+    // Only check that we don't have Unicode in table areas
+    const lines = output.split('\n');
+    const tableLines = lines.filter(line =>
+        line.includes('|') && !line.includes('Daily Cost Trend') &&
+        !line.includes('Weekly Usage Pattern') && !line.includes('Cost Distribution')
+    );
+
+    // Table lines should not contain Unicode box-drawing characters
+    tableLines.forEach(line => {
+        assert.ok(!line.includes('─'), `Table line should not use Unicode dash: ${line}`);
+        assert.ok(!line.includes('│'), `Table line should not use Unicode pipe: ${line}`);
+        assert.ok(!line.includes('┌'), `Table line should not use Unicode box-drawing: ${line}`);
+        assert.ok(!line.includes('┐'), `Table line should not use Unicode box-drawing: ${line}`);
+        assert.ok(!line.includes('└'), `Table line should not use Unicode box-drawing: ${line}`);
+        assert.ok(!line.includes('┘'), `Table line should not use Unicode box-drawing: ${line}`);
+    });
 });
 
 test('Formatter output is deterministic', () => {

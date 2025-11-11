@@ -158,15 +158,9 @@ async function main() {
         } else {
             // Text output
             const formatter = new TextFormatter();
-
-            // TODO: When task 12 is complete, pass showGraphs flag to formatter
-            // For now, graphs are not yet implemented
-            if (args.showGraphs) {
-                console.error('Warning: --show-graphs flag is not yet implemented (task 12 pending)');
-                console.error('Proceeding with text-only output...\n');
-            }
-
-            output = formatter.format(analysisResult);
+            
+            // Pass showGraphs flag to formatter
+            output = formatter.format(analysisResult, args.showGraphs);
         }
 
         // Output results
