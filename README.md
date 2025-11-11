@@ -16,22 +16,31 @@ Cursor IDE users spend $20-$370/month on AI coding assistance but lack visibilit
 **Core Principle**: One core analysis engine, multiple consumption interfaces.
 
 - **Core Domain Logic** (`src/domain/`): Pure JavaScript domain logic with zero external dependencies
-- **Future Interfaces**: Web UI, CLI, and JSON API will consume the core engine
+- **CLI Interface** (`src/cli/`): Command-line tool for terminal usage
+- **Web UI** (`docs/`): Browser-based interface for interactive analysis
+- **JSON API** (`src/index.js`): Programmatic access to analysis engine
 
 ## Project Structure
 
 ```
 cursor_cost_explorer/
 ├── src/
-│   └── domain/          # Domain logic (pure JS, no dependencies)
-├── docs/                # Project documentation
+│   ├── domain/          # Domain logic (pure JS, no dependencies)
+│   │   ├── analyzers/   # Analysis modules (cost, efficiency, optimization)
+│   │   ├── entities/    # Domain entities (UsageRecord, DailyUsage, etc.)
+│   │   ├── parsers/     # CSV parsing and validation
+│   │   └── models/      # Model registry and pricing
+│   ├── cli/             # CLI entry point and text formatter
+│   └── index.js         # Public API for programmatic use
+├── docs/                # Web UI (HTML/CSS/JS)
+├── tests/               # Test suite
 ├── backlog/             # Project management and tasks
 └── package.json
 ```
 
 ## Requirements
 
-- Node.js >= 24.0.0 (latest LTS)
+- Node.js >= 21.0.0
 
 ## Installation
 
@@ -74,6 +83,15 @@ cursor-cost-explorer usage.csv --json --output analysis.json
 - `--help, -h`: Show help message
 - `--version, -v`: Show version number
 
+### Web UI
+
+For an interactive browser-based experience, open `docs/index.html` in your browser and upload your CSV file directly. The web UI provides:
+
+- Interactive visualizations
+- Real-time analysis
+- No command-line required
+- Works entirely in your browser (no server needed)
+
 ## Setup (for development)
 
 ```bash
@@ -82,25 +100,48 @@ nvm install --lts
 nvm use --lts
 
 # Verify Node.js version
-node --version  # Should be v24.x.x
+node --version  # Should be v21.x.x or higher
 ```
+
+## Features
+
+### Core Analysis Capabilities
+
+- ✅ **Cost Analysis**: Daily, weekly, and monthly cost breakdowns with model-level insights
+- ✅ **Model Efficiency Analysis**: Identifies inefficient model usage patterns and recommendations
+- ✅ **Plan Optimization**: Analyzes usage patterns and recommends optimal Cursor subscription plans
+- ✅ **Cache Efficiency Assessment**: Evaluates cache hit rates and optimization opportunities
+- ✅ **Savings Opportunities**: Identifies specific actions to reduce costs by 30-50%
+- ✅ **Usage Pattern Analysis**: Analyzes work style, peak usage times, and productivity patterns
+
+### Interfaces
+
+- ✅ **CLI Tool**: Full-featured command-line interface with ASCII graph support
+- ✅ **Web UI**: Interactive browser-based interface for visual analysis
+- ✅ **JSON API**: Programmatic access for integration with other tools
+
+### Technical Highlights
+
+- **Zero External Dependencies**: Core domain logic is pure JavaScript
+- **Privacy-First**: All processing happens locally - your data never leaves your device
+- **Comprehensive Testing**: Full test coverage for all analysis modules
+- **Clean Architecture**: Domain logic separated from infrastructure concerns
 
 ## Development
 
-This project focuses on **domain logic first** with pure JavaScript and minimal dependencies.
+This project follows clean architecture principles with domain logic separated from infrastructure.
 
-### Current Focus
+### Running Tests
 
-- ✅ Project setup with latest Node.js
-- 🔄 Domain types and data models
-- 🔄 CSV parser and validation
-- 🔄 Cost analysis engine
-- 🔄 Model efficiency analysis
-- 🔄 Plan optimization logic
-- 🔄 Cache efficiency assessment
-- 🔄 Savings opportunities identification
-- 🔄 Usage pattern analysis
-- 🔄 Core analysis engine and JSON export
+```bash
+npm test
+```
+
+### Development Workflow
+
+1. Domain logic lives in `src/domain/` with zero external dependencies
+2. CLI and Web UI consume the core engine via `src/index.js`
+3. All analysis modules are thoroughly tested in `tests/`
 
 ## License
 
