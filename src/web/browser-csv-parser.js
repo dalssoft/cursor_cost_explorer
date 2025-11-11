@@ -4,7 +4,7 @@
  */
 
 // Import the parser class directly and create a browser-safe version
-import { UsageRecord } from '../src/domain/entities/UsageRecord.js';
+import { UsageRecord } from '../domain/entities/UsageRecord.js';
 
 class BrowserCSVParser {
     constructor() {
