@@ -846,11 +846,12 @@ class TextFormatter {
             const label = String(item.label || '').substring(0, labelWidth).padEnd(labelWidth);
             const percentage = item.percentage || 0;
             const barLength = Math.round((percentage / 100) * width);
-            const bar = '█'.repeat(barLength);
+            const filledBar = '█'.repeat(barLength); // Full block for filled portion
+            const emptyBar = '░'.repeat(width - barLength); // Light shade for unfilled portion
             const valueStr = this.formatCurrency(item.value || 0);
             const pctStr = this.formatPercentage(percentage);
 
-            lines.push(`${label} │${bar}│ ${pctStr} (${valueStr})`);
+            lines.push(`${label} │${filledBar}${emptyBar}│ ${pctStr} (${valueStr})`);
         });
 
         return lines;
@@ -883,14 +884,14 @@ class TextFormatter {
 
         // Draw chart from top to bottom
         for (let row = height; row >= 0; row--) {
-            const lineChars = Array(chartWidth).fill(' ');
+            const lineChars = Array(chartWidth).fill('░'); // Light shade for background
             bars.forEach(bar => {
                 const startCol = bar.position;
                 // Draw the bar segment if it reaches this row
                 if (bar.height >= row) {
                     for (let i = 0; i < 4; i++) {
                         if (startCol + i < chartWidth) {
-                            lineChars[startCol + i] = '█';
+                            lineChars[startCol + i] = '█'; // Full block for filled bar
                         }
                     }
                 }
@@ -926,10 +927,11 @@ class TextFormatter {
     }
 
     /**
-     * Generates a smooth line chart for daily cost trends using Unicode line drawing
+     * Generates a smooth line chart for daily cost trends using Unicode braille characters
+     * Braille provides 2x horizontal and 4x vertical resolution compared to single characters
      * @param {Array<Object>} data - Array of {date, cost}
-     * @param {number} width - Maximum width of the chart (default 70)
-     * @param {number} height - Height of the chart (default 8)
+     * @param {number} width - Maximum width of the chart in characters (default 70)
+     * @param {number} height - Height of the chart in braille rows (default 8)
      * @returns {Array<string>} Array of lines representing the chart
      */
     generateLineChart(data, width = 70, height = 8) {
@@ -939,54 +941,47 @@ class TextFormatter {
         const maxCost = Math.max(...data.map(d => d.cost || 0));
         if (maxCost === 0) return [];
 
-        // Normalize data to chart dimensions
+        // Braille characters represent a 2x4 grid (2 columns, 4 rows)
+        // This gives us 2x horizontal and 4x vertical resolution
+        const brailleWidth = width * 2;  // 2 dots per character horizontally
+        const brailleHeight = height * 4; // 4 dots per character vertically
+
+        // Normalize data to braille grid dimensions
         const chartData = data.map(item => ({
             date: item.date || '',
             cost: item.cost || 0,
-            y: Math.round((item.cost / maxCost) * height)
+            y: Math.round((item.cost / maxCost) * brailleHeight)
         }));
 
-        // Create a grid with Unicode characters
-        const grid = Array(height + 1).fill(null).map(() => Array(width).fill(' '));
+        // Create a braille dot grid (true = dot on, false = dot off)
+        const brailleGrid = Array(brailleHeight + 1).fill(null).map(() =>
+            Array(brailleWidth).fill(false)
+        );
 
-        // Unicode line drawing characters - using simpler ASCII-friendly characters
-        const chars = {
-            horizontal: '-',
-            vertical: '|',
-            cross: '+',
-            cornerTL: '+',
-            cornerTR: '+',
-            cornerBL: '+',
-            cornerBR: '+',
-            tTop: '+',
-            tBottom: '+',
-            tLeft: '+',
-            tRight: '+',
-            point: '*',
-            line: '-'
-        };
-
-        // Plot points and draw smooth lines
+        // Plot points in braille grid (single dot per point for precision)
         chartData.forEach((point, index) => {
-            const x = Math.round((index / (chartData.length - 1)) * (width - 1));
-            const y = height - point.y;
-            if (y >= 0 && y <= height && x >= 0 && x < width) {
-                grid[y][x] = chars.point;
+            const x = Math.round((index / (chartData.length - 1)) * (brailleWidth - 1));
+            const y = brailleHeight - point.y;
+            if (y >= 0 && y <= brailleHeight && x >= 0 && x < brailleWidth) {
+                brailleGrid[y][x] = true;
             }
         });
 
         // Draw smooth lines between points
         for (let i = 0; i < chartData.length - 1; i++) {
-            const x1 = Math.round((i / (chartData.length - 1)) * (width - 1));
-            const y1 = height - chartData[i].y;
-            const x2 = Math.round(((i + 1) / (chartData.length - 1)) * (width - 1));
-            const y2 = height - chartData[i + 1].y;
+            const x1 = Math.round((i / (chartData.length - 1)) * (brailleWidth - 1));
+            const y1 = brailleHeight - chartData[i].y;
+            const x2 = Math.round(((i + 1) / (chartData.length - 1)) * (brailleWidth - 1));
+            const y2 = brailleHeight - chartData[i + 1].y;
 
-            this.drawSmoothLine(grid, x1, y1, x2, y2, chars, width, height);
+            this.drawBrailleLine(brailleGrid, x1, y1, x2, y2, brailleWidth, brailleHeight);
         }
 
-        // Convert grid to lines
-        grid.forEach(row => {
+        // Convert braille grid to braille characters
+        const brailleChars = this.brailleGridToChars(brailleGrid, brailleWidth, brailleHeight);
+
+        // Convert braille characters to display lines
+        brailleChars.forEach(row => {
             lines.push('|' + row.join('') + '|');
         });
 
@@ -1017,6 +1012,100 @@ class TextFormatter {
         }
 
         return lines;
+    }
+
+    /**
+     * Draws a smooth line in a braille dot grid using Bresenham's line algorithm
+     * @param {Array<Array<boolean>>} grid - The braille dot grid (true = dot on)
+     * @param {number} x1 - Start x coordinate
+     * @param {number} y1 - Start y coordinate
+     * @param {number} x2 - End x coordinate
+     * @param {number} y2 - End y coordinate
+     * @param {number} width - Grid width
+     * @param {number} height - Grid height
+     */
+    drawBrailleLine(grid, x1, y1, x2, y2, width, height) {
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = x1 < x2 ? 1 : -1;
+        const sy = y1 < y2 ? 1 : -1;
+        let err = dx - dy;
+        let x = x1;
+        let y = y1;
+
+        while (true) {
+            // Mark this dot only (thin line)
+            if (y >= 0 && y <= height && x >= 0 && x < width) {
+                grid[y][x] = true;
+            }
+
+            if (x === x2 && y === y2) break;
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    /**
+     * Converts a braille dot grid to braille Unicode characters
+     * Each braille character represents a 2x4 grid of dots
+     * @param {Array<Array<boolean>>} grid - The braille dot grid
+     * @param {number} gridWidth - Width of the dot grid
+     * @param {number} gridHeight - Height of the dot grid
+     * @returns {Array<Array<string>>} Array of rows, each containing braille characters
+     */
+    brailleGridToChars(grid, gridWidth, gridHeight) {
+        // Braille characters are arranged in 2 columns x 4 rows
+        // Each character represents 2 horizontal dots and 4 vertical dots
+        const charWidth = Math.ceil(gridWidth / 2);
+        const charHeight = Math.ceil(gridHeight / 4);
+        const result = [];
+
+        for (let charRow = 0; charRow < charHeight; charRow++) {
+            const row = [];
+            for (let charCol = 0; charCol < charWidth; charCol++) {
+                // Calculate the braille pattern for this character
+                // Braille dots are numbered:
+                // 1 4
+                // 2 5
+                // 3 6
+                // 7 8
+                let pattern = 0;
+
+                // Map grid dots to braille pattern bits
+                for (let dotRow = 0; dotRow < 4; dotRow++) {
+                    for (let dotCol = 0; dotCol < 2; dotCol++) {
+                        const gridX = charCol * 2 + dotCol;
+                        const gridY = charRow * 4 + dotRow;
+
+                        if (gridY < gridHeight && gridX < gridWidth && grid[gridY][gridX]) {
+                            // Braille dot numbering (1-indexed in Unicode spec, but we use 0-indexed bits)
+                            const bitMap = [
+                                [0, 3],  // row 0: dots 1, 4
+                                [1, 4],  // row 1: dots 2, 5
+                                [2, 5],  // row 2: dots 3, 6
+                                [6, 7]   // row 3: dots 7, 8
+                            ];
+                            pattern |= (1 << bitMap[dotRow][dotCol]);
+                        }
+                    }
+                }
+
+                // Convert pattern to braille character (U+2800 is blank, U+2801-U+28FF are patterns)
+                const brailleChar = String.fromCharCode(0x2800 + pattern);
+                row.push(brailleChar);
+            }
+            result.push(row);
+        }
+
+        return result;
     }
 
     /**
