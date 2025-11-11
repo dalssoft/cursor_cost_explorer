@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor Cost Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #e8dcc4;
+            --fg-main: #1a3a52;
+            --text-main: #1a3a52;
+            --text-accent: #e8dcc4;
+            --border-color: #1a3a52;
+            --border-accent: #e8dcc4;
+            --border-dashed: rgba(232, 220, 196, 0.5);
+            --border-dashed-hover: #e8dcc4;
+            --bg-hover: rgba(232, 220, 196, 0.1);
+            --bg-dragover: rgba(232, 220, 196, 0.15);
+            --bg-info: transparent;
+            --bg-info-cli-code: rgba(232, 220, 196, 0.15);
+            --text-info-cli-code: #e8dcc4;
+            --border-info: rgba(232, 220, 196, 0.5);
+            --bg-error: #8b2e2e;
+            --border-error: #6b1e1e;
+            --text-error: #ffe0e0;
+            --scrollbar-track: rgba(0, 0, 0, 0.2);
+            --scrollbar-thumb: rgba(232, 220, 196, 0.3);
+            --scrollbar-thumb-hover: rgba(232, 220, 196, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: var(--fg-main);
+            color: var(--text-accent);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--border-accent);
+        }
+
+        h1 {
+            color: var(--text-accent);
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .github-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-accent);
+            font-size: 13px;
+        }
+
+        .github-info a {
+            color: var(--text-accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+            border: 1px solid var(--border-accent);
+            padding: 6px 12px;
+        }
+
+        .github-info a:hover {
+            opacity: 0.8;
+            background: var(--bg-hover);
+        }
+
+        .github-logo {
+            width: 16px;
+            height: 16px;
+            fill: var(--text-accent);
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: var(--fg-main);
+            border: 3px solid var(--border-color);
+            padding: 50px 40px;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 1px solid var(--border-color);
+            pointer-events: none;
+        }
+
+        .upload-section h2 {
+            margin-bottom: 25px;
+            font-size: 16px;
+            color: var(--text-accent);
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--border-dashed);
+            padding: 60px;
+            margin: 25px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg-hover);
+            text-align: center;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--border-dashed-hover);
+            background: var(--bg-hover);
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--border-dashed-hover);
+            background: var(--bg-dragover);
+            border-style: solid;
+        }
+
+        .drop-zone-text {
+            font-size: 15px;
+            margin-bottom: 10px;
+            color: var(--text-accent);
+            letter-spacing: 1.5px;
+        }
+
+        .drop-zone-hint {
+            font-size: 12px;
+            color: var(--border-dashed);
+            margin-top: 10px;
+            letter-spacing: 1px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .info-bar {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            padding: 12px 20px;
+            font-size: 12px;
+            color: var(--text-accent);
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .info-item strong {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .info-item a {
+            color: var(--text-accent);
+            text-decoration: underline;
+            text-decoration-color: var(--border-info);
+            transition: opacity 0.2s;
+        }
+
+        .info-item a:hover {
+            opacity: 0.8;
+        }
+
+        .cli-hint {
+            margin-top: 25px;
+            font-size: 12px;
+            color: var(--border-dashed);
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .cli-hint code {
+            background: var(--bg-info-cli-code);
+            color: var(--text-info-cli-code);
+            padding: 4px 10px;
+            font-family: inherit;
+            letter-spacing: 0.5px;
+            border: 1px solid var(--border-info);
+        }
+
+        .output-section {
+            display: none;
+            width: 100%;
+        }
+
+        .output-section.active {
+            display: flex;
+            justify-content: center;
+        }
+
+        .output-container {
+            background: var(--fg-main);
+            border: 3px solid var(--border-color);
+            padding: 30px;
+            overflow-x: auto;
+            position: relative;
+            width: fit-content;
+            max-width: 100%;
+        }
+
+        .output-container::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 1px solid var(--border-color);
+            pointer-events: none;
+        }
+
+        .output-content-wrapper {
+            max-width: 100%;
+        }
+
+        .output-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: var(--text-accent);
+            letter-spacing: 1.3px;
+            text-align: left;
+        }
+
+        .error {
+            background: var(--bg-error);
+            border: 3px solid var(--border-error);
+            color: var(--text-error);
+            padding: 20px 25px;
+            margin-bottom: 30px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 25px;
+            color: var(--text-accent);
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        /* Scrollbar styling */
+        .output-container::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        .output-container::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        .output-container::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+        }
+
+        .output-container::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 16px;
+                letter-spacing: 2px;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .upload-section {
+                padding: 30px 20px;
+            }
+
+            .drop-zone {
+                padding: 40px 20px;
+            }
+
+            .output-content {
+                font-size: 12px;
+            }
+
+            .info-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>CURSOR COST EXPLORER</h1>
+            <div class="github-info">
+                <a href="https://github.com/dalssoft/cursor_cost_explorer" target="_blank" rel="noopener noreferrer">
+                    <svg class="github-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                    </svg>
+                    <span id="github-stars">★</span>
+                </a>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div id="errorContainer"></div>
+
+            <div class="upload-section">
+                <h2>ANALYZE YOUR CURSOR USAGE</h2>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-text">
+                        DROP CURSOR CSV FILE HERE
+                    </div>
+                    <div class="drop-zone-hint">
+                        OR CLICK TO BROWSE
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept=".csv" />
+
+                <div class="info-bar">
+                    <div class="info-item">
+                        <strong>DOWNLOAD CSV</strong>
+                        Access <a href="https://cursor.com/dashboard?tab=usage" target="_blank"
+                            rel="noopener noreferrer">cursor.com/dashboard</a>
+                    </div>
+                    <div class="info-item">
+                        <strong>PRIVACY FIRST</strong>
+                        No data sent to servers
+                    </div>
+                    <div class="info-item">
+                        <strong>NO DEPENDENCIES</strong>
+                        Pure JS, no npm dependencies
+                    </div>
+                </div>
+
+                <div class="cli-hint">
+                    Agent-friendly CLI: <code>npx cursor-cost-explorer usage.csv --show-graphs</code>
+                </div>
+            </div>
+
+            <div class="output-section" id="outputSection">
+                <div class="output-container">
+                    <div class="output-content-wrapper">
+                        <div class="output-content" id="outputContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>
